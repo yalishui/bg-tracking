@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1E3A5F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>BG Tracking - 血糖追踪</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- App Container -->
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-date" id="headerDate">
+        <span class="date-text"></span>
+        <span class="weekday-text"></span>
+      </div>
+      <button class="header-settings" id="settingsBtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+      <!-- Home Page -->
+      <section class="page page-home active" id="pageHome">
+        <!-- Fasting Glucose Card -->
+        <div class="card glucose-card fasting" id="fastingCard">
+          <div class="card-header">
+            <span class="card-icon">🌅</span>
+            <span class="card-title">空腹血糖</span>
+            <span class="card-time" id="fastingTime"></span>
+          </div>
+          <div class="card-body">
+            <div class="glucose-display" id="fastingDisplay">
+              <span class="glucose-value placeholder">--</span>
+              <span class="glucose-unit">mmol/L</span>
+            </div>
+            <div class="glucose-status" id="fastingStatus"></div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-primary" onclick="app.openGlucoseInput('fasting')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              记录
+            </button>
+            <button class="btn btn-secondary" onclick="app.openCamera('fasting')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              拍照
+            </button>
+          </div>
+        </div>
+
+        <!-- Meal Cards -->
+        <div class="meal-section">
+          <h3 class="section-title">今日三餐</h3>
+          <div class="meal-cards">
+            <!-- Breakfast -->
+            <div class="card meal-card" id="breakfastCard">
+              <div class="card-header">
+                <span class="card-icon">🍳</span>
+                <span class="card-title">早餐</span>
+              </div>
+              <div class="card-body">
+                <div class="meal-foods" id="breakfastFoods">
+                  <span class="no-data">未记录</span>
+                </div>
+                <div class="post-meal-section">
+                  <div class="post-meal-label">餐后2h血糖</div>
+                  <div class="post-meal-value" id="breakfastPostValue">
+                    <span class="placeholder">--</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-sm" onclick="app.openMealInput('breakfast')">🍽️ 记录</button>
+                <button class="btn btn-sm btn-secondary" onclick="app.openPostMealInput('breakfast')">📊 餐后</button>
+                <button class="btn btn-sm btn-icon" onclick="app.openCamera('post', 'breakfast')" title="拍照识别">📷</button>
+              </div>
+            </div>
+
+            <!-- Lunch -->
+            <div class="card meal-card" id="lunchCard">
+              <div class="card-header">
+                <span class="card-icon">🥗</span>
+                <span class="card-title">午餐</span>
+              </div>
+              <div class="card-body">
+                <div class="meal-foods" id="lunchFoods">
+                  <span class="no-data">未记录</span>
+                </div>
+                <div class="post-meal-section">
+                  <div class="post-meal-label">餐后2h血糖</div>
+                  <div class="post-meal-value" id="lunchPostValue">
+                    <span class="placeholder">--</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-sm" onclick="app.openMealInput('lunch')">🍽️ 记录</button>
+                <button class="btn btn-sm btn-secondary" onclick="app.openPostMealInput('lunch')">📊 餐后</button>
+                <button class="btn btn-sm btn-icon" onclick="app.openCamera('post', 'lunch')" title="拍照识别">📷</button>
+              </div>
+            </div>
+
+            <!-- Dinner -->
+            <div class="card meal-card" id="dinnerCard">
+              <div class="card-header">
+                <span class="card-icon">🍽️</span>
+                <span class="card-title">晚餐</span>
+              </div>
+              <div class="card-body">
+                <div class="meal-foods" id="dinnerFoods">
+                  <span class="no-data">未记录</span>
+                </div>
+                <div class="post-meal-section">
+                  <div class="post-meal-label">餐后2h血糖</div>
+                  <div class="post-meal-value" id="dinnerPostValue">
+                    <span class="placeholder">--</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="btn btn-sm" onclick="app.openMealInput('dinner')">🍽️ 记录</button>
+                <button class="btn btn-sm btn-secondary" onclick="app.openPostMealInput('dinner')">📊 餐后</button>
+                <button class="btn btn-sm btn-icon" onclick="app.openCamera('post', 'dinner')" title="拍照识别">📷</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exercise Card -->
+        <div class="card exercise-card" id="exerciseCard">
+          <div class="card-header">
+            <span class="card-icon">🏃</span>
+            <span class="card-title">今日运动</span>
+          </div>
+          <div class="card-body">
+            <div class="exercise-summary" id="exerciseSummary">
+              <span class="no-data">暂无运动记录</span>
+            </div>
+            <div class="exercise-stats" id="exerciseStats">
+              <div class="stat">
+                <span class="stat-value" id="exerciseCount">0</span>
+                <span class="stat-label">次</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="exerciseTotal">0</span>
+                <span class="stat-label">分钟</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-primary" onclick="app.openExerciseInput()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              添加运动
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trends Page -->
+      <section class="page page-trends" id="pageTrends">
+        <div class="trends-header">
+          <div class="period-selector">
+            <button class="period-btn active" data-period="week" onclick="app.switchPeriod('week')">周</button>
+            <button class="period-btn" data-period="month" onclick="app.switchPeriod('month')">月</button>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon normal"></div>
+            <div class="stat-info">
+              <span class="stat-value" id="avgValue">--</span>
+              <span class="stat-unit">mmol/L</span>
+              <span class="stat-label">平均血糖</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success"></div>
+            <div class="stat-info">
+              <span class="stat-value" id="targetRate">--</span>
+              <span class="stat-unit">%</span>
+              <span class="stat-label">达标率</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon warning"></div>
+            <div class="stat-info">
+              <span class="stat-value" id="maxValue">--</span>
+              <span class="stat-unit">mmol/L</span>
+              <span class="stat-label">最高值</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon low"></div>
+            <div class="stat-info">
+              <span class="stat-value" id="minValue">--</span>
+              <span class="stat-unit">mmol/L</span>
+              <span class="stat-label">最低值</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-legend">
+          <div class="legend-item">
+            <span class="legend-color" style="background: #7CB342"></span>
+            <span>空腹</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-color" style="background: #FF8A65"></span>
+            <span>餐后</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Records Page -->
+      <section class="page page-records" id="pageRecords">
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="app.filterRecords('all')">全部</button>
+          <button class="filter-btn" data-filter="fasting" onclick="app.filterRecords('fasting')">空腹</button>
+          <button class="filter-btn" data-filter="post" onclick="app.filterRecords('post')">餐后</button>
+          <button class="filter-btn" data-filter="exercise" onclick="app.filterRecords('exercise')">运动</button>
+        </div>
+        <div class="records-list" id="recordsList">
+          <div class="no-records">
+            <span class="no-records-icon">📋</span>
+            <span>暂无记录</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tools Page -->
+      <section class="page page-tools" id="pageTools">
+        <div class="tools-grid">
+          <!-- GI Search -->
+          <div class="tool-card" onclick="app.openGIPage()">
+            <div class="tool-icon">🔍</div>
+            <div class="tool-info">
+              <span class="tool-title">GI 查询</span>
+              <span class="tool-desc">查询食物血糖生成指数</span>
+            </div>
+          </div>
+
+          <!-- Reminders -->
+          <div class="tool-card" onclick="app.openReminders()">
+            <div class="tool-icon">🔔</div>
+            <div class="tool-info">
+              <span class="tool-title">提醒设置</span>
+              <span class="tool-desc">设定测量提醒时间</span>
+            </div>
+          </div>
+
+          <!-- Export -->
+          <div class="tool-card" onclick="app.exportData()">
+            <div class="tool-icon">📤</div>
+            <div class="tool-info">
+              <span class="tool-title">导出数据</span>
+              <span class="tool-desc">导出为CSV格式</span>
+            </div>
+          </div>
+
+          <!-- About -->
+          <div class="tool-card" onclick="app.showAbout()">
+            <div class="tool-icon">ℹ️</div>
+            <div class="tool-info">
+              <span class="tool-title">关于</span>
+              <span class="tool-desc">v1.0.0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gi-search-section" id="giSearchSection" style="display: none;">
+          <div class="search-bar">
+            <input type="text" id="giSearchInput" placeholder="搜索食物..." oninput="app.searchGI(this.value)">
+          </div>
+          <div class="gi-list" id="giList"></div>
+        </div>
+
+        <div class="reminders-section" id="remindersSection" style="display: none;">
+          <div class="reminder-item">
+            <div class="reminder-info">
+              <span class="reminder-title">空腹血糖提醒</span>
+              <span class="reminder-desc">每天早上测量空腹血糖</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="fastingReminderToggle" onchange="app.toggleReminder('fasting', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="reminder-time" id="fastingReminderTime">
+            <span>提醒时间</span>
+            <input type="time" id="fastingTimeInput" value="07:00" onchange="app.updateReminderTime('fasting', this.value)">
+          </div>
+
+          <div class="reminder-item">
+            <div class="reminder-info">
+              <span class="reminder-title">餐后血糖提醒</span>
+              <span class="reminder-desc">餐后2小时提醒测量</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="postReminderToggle" onchange="app.toggleReminder('post', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Tab Bar -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="home" onclick="app.switchTab('home')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>首页</span>
+      </button>
+      <button class="tab-btn" data-tab="trends" onclick="app.switchTab('trends')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        <span>趋势</span>
+      </button>
+      <button class="tab-btn" data-tab="records" onclick="app.switchTab('records')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        <span>记录</span>
+      </button>
+      <button class="tab-btn" data-tab="tools" onclick="app.switchTab('tools')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>工具</span>
+      </button>
+    </nav>
+
+    <!-- FAB Button -->
+    <button class="fab" id="fabBtn" onclick="app.openQuickAdd()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Modals -->
+  <!-- Glucose Input Modal -->
+  <div class="modal" id="glucoseModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="glucoseModalTitle">记录血糖</h3>
+        <button class="modal-close" onclick="app.closeModal('glucoseModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label>血糖值 (mmol/L)</label>
+          <input type="number" id="glucoseInput" step="0.1" min="1" max="30" placeholder="例如: 5.6">
+        </div>
+        <div class="input-group">
+          <label>备注（可选）</label>
+          <input type="text" id="glucoseNote" placeholder="添加备注...">
+        </div>
+        <div class="glucose-preview" id="glucosePreview">
+          <span class="preview-label">状态:</span>
+          <span class="preview-status">--</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('glucoseModal')">取消</button>
+        <button class="btn btn-primary" onclick="app.saveGlucose()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meal Input Modal -->
+  <div class="modal" id="mealModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="mealModalTitle">记录饮食</h3>
+        <button class="modal-close" onclick="app.closeModal('mealModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label>食物（用逗号分隔）</label>
+          <input type="text" id="mealFoodsInput" placeholder="例如: 全麦面包2片, 煮鸡蛋1个">
+        </div>
+        <div class="input-group">
+          <label>备注（可选）</label>
+          <input type="text" id="mealNote" placeholder="添加备注...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('mealModal')">取消</button>
+        <button class="btn btn-primary" onclick="app.saveMeal()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise Input Modal -->
+  <div class="modal" id="exerciseModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>添加运动</h3>
+        <button class="modal-close" onclick="app.closeModal('exerciseModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label>运动类型</label>
+          <div class="exercise-types">
+            <button class="type-btn" data-type="walking" onclick="app.selectExerciseType('walking')">🚶 快走</button>
+            <button class="type-btn" data-type="running" onclick="app.selectExerciseType('running')">🏃 跑步</button>
+            <button class="type-btn" data-type="cycling" onclick="app.selectExerciseType('cycling')">🚴 骑行</button>
+            <button class="type-btn" data-type="swimming" onclick="app.selectExerciseType('swimming')">🏊 游泳</button>
+            <button class="type-btn" data-type="yoga" onclick="app.selectExerciseType('yoga')">🧘 瑜伽</button>
+            <button class="type-btn" data-type="strength" onclick="app.selectExerciseType('strength')">💪 力量</button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>时长（分钟）</label>
+          <input type="number" id="exerciseDuration" min="1" max="300" placeholder="30">
+        </div>
+        <div class="input-group">
+          <label>强度</label>
+          <div class="intensity-selector">
+            <button class="intensity-btn" data-intensity="low" onclick="app.selectIntensity('low')">低</button>
+            <button class="intensity-btn active" data-intensity="medium" onclick="app.selectIntensity('medium')">中</button>
+            <button class="intensity-btn" data-intensity="high" onclick="app.selectIntensity('high')">高</button>
+          </div>
+        </div>
+        <div class="input-group">
+          <label>备注（可选）</label>
+          <input type="text" id="exerciseNote" placeholder="添加备注...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('exerciseModal')">取消</button>
+        <button class="btn btn-primary" onclick="app.saveExercise()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Modal -->
+  <div class="modal" id="cameraModal">
+    <div class="modal-content camera-modal">
+      <div class="modal-header">
+        <h3>拍照识别血糖</h3>
+        <button class="modal-close" onclick="app.closeModal('cameraModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="camera-container">
+          <video id="cameraVideo" autoplay playsinline></video>
+          <canvas id="cameraCanvas" style="display: none;"></canvas>
+          <div class="camera-overlay">
+            <div class="scan-frame"></div>
+          </div>
+        </div>
+        <div class="camera-hint">请将血糖仪数值对准框内</div>
+        <div class="ocr-result" id="ocrResult" style="display: none;">
+          <span>识别结果: </span>
+          <span id="ocrValue">--</span>
+        </div>
+      </div>
+      <div class="modal-footer" id="cameraFooter">
+        <button class="btn btn-secondary" onclick="app.closeModal('cameraModal')">取消</button>
+        <button class="btn btn-primary" id="captureBtn" onclick="app.captureImage()">拍照</button>
+        <button class="btn btn-secondary" id="retakeBtn" style="display:none;" onclick="app.retakePhoto()">🔄 重拍</button>
+        <button class="btn btn-primary" id="confirmOCRBtn" style="display:none;" onclick="app.saveOCRGlucose()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="toast-message"></span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="js/gi-data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ocr.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/app.js"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW registration failed:', err));
+    }
+  </script>
+</body>
+</html>

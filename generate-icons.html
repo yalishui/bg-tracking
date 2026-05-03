@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>BG Tracking - 生成 PWA 图标</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f5f7fa; }
+    .preview { display: flex; gap: 20px; margin: 20px 0; align-items: flex-end; }
+    canvas { border: 1px solid #ccc; background: white; }
+    button { padding: 12px 24px; background: #4A90A4; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    .status { margin-top: 20px; color: #2d3748; }
+  </style>
+</head>
+<body>
+  <h2>BG Tracking PWA 图标生成器</h2>
+  <p>点击按钮生成所有尺寸的 PWA 图标（72/128/192/512 px）</p>
+  <button onclick="generateAll()">生成所有图标</button>
+  <div class="preview" id="preview"></div>
+  <div class="status" id="status"></div>
+
+  <script>
+    const SIZES = [72, 128, 192, 512];
+    const COLORS = {
+      bg: '#4A90A4',
+      bgDark: '#3A7A8A',
+      white: '#FFFFFF'
+    };
+
+    function drawIcon(ctx, size) {
+      // Clear
+      ctx.clearRect(0, 0, size, size);
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, COLORS.bg);
+      gradient.addColorStop(1, COLORS.bgDark);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Draw a glucose drop/heart icon
+      const cx = size / 2;
+      const cy = size / 2 - size * 0.05;
+      const r = size * 0.28;
+      
+      // Heart shape (simplified)
+      ctx.fillStyle = COLORS.white;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + r * 0.8);
+      ctx.bezierCurveTo(cx - r * 1.2, cy - r * 0.5, cx - r * 0.6, cy - r * 1.2, cx, cy + r * 0.1);
+      ctx.bezierCurveTo(cx + r * 0.6, cy - r * 1.2, cx + r * 1.2, cy - r * 0.5, cx, cy + r * 0.8);
+      ctx.fill();
+      
+      // Inner pulse line
+      ctx.strokeStyle = COLORS.bg;
+      ctx.lineWidth = Math.max(2, size * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.35, cy);
+      ctx.lineTo(cx - r * 0.15, cy + r * 0.1);
+      ctx.lineTo(cx, cy - r * 0.2);
+      ctx.lineTo(cx + r * 0.15, cy + r * 0.1);
+      ctx.lineTo(cx + r * 0.35, cy);
+      ctx.stroke();
+      
+      // "BG" text at bottom
+      ctx.fillStyle = COLORS.white;
+      ctx.font = 'bold ' + (size * 0.14) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('BG', cx, cy + r * 1.05);
+    }
+
+    function generateAll() {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+      let done = 0;
+      
+      SIZES.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        canvas.style.width = Math.min(size, 128) + 'px';
+        canvas.style.height = Math.min(size, 128) + 'px';
+        canvas.title = size + 'x' + size;
+        
+        const ctx = canvas.getContext('2d');
+        drawIcon(ctx, size);
+        
+        // Download link
+        const link = document.createElement('a');
+        link.download = 'icon-' + size + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.textContent = '下载 ' + size + 'px';
+        link.style.display = 'block';
+        link.style.marginTop = '8px';
+        link.style.fontSize = '12px';
+        link.style.color = '#4A90A4';
+        
+        const container = document.createElement('div');
+        container.appendChild(canvas);
+        container.appendChild(link);
+        preview.appendChild(container);
+        
+        done++;
+      });
+      
+      document.getElementById('status').textContent = 
+        '✅ 图标已生成！请点击各尺寸的"下载"链接保存到 /icons/ 文件夹';
+    }
+
+    // Auto-generate on load
+    window.onload = generateAll;
+  </script>
+</body>
+</html>
