@@ -4,8 +4,8 @@
   "description": "个人血糖追踪与管理工具",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#4A90A4",
-  "theme_color": "#4A90A4",
+  "background_color": "#1E3A5F",
+  "theme_color": "#1E3A5F",
   "orientation": "portrait",
   "icons": [
     {

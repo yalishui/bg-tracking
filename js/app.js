@@ -129,17 +129,23 @@ const app = {
   },
 
   displayPostMealGlucose(records) {
-    if (records.length > 0) {
-      var latest = records[records.length - 1];
-      var statusClass = latest.status || 'normal';
-      var types = ['breakfast', 'lunch', 'dinner'];
-      for (var i = 0; i < types.length; i++) {
-        var mealType = types[i];
-        var valueContainer = document.getElementById(mealType + 'PostValue');
-        if (valueContainer) {
-          valueContainer.innerHTML =
-            '<span class="glucose-value ' + statusClass + '" style="font-size:1.125rem;">' + latest.value.toFixed(1) + '</span>';
-        }
+    // Reset all meal post values first
+    var types = ['breakfast', 'lunch', 'dinner'];
+    for (var i = 0; i < types.length; i++) {
+      var valueContainer = document.getElementById(types[i] + 'PostValue');
+      if (valueContainer) {
+        valueContainer.innerHTML = '<span class="placeholder">--</span>';
+      }
+    }
+    // Display each record in its corresponding meal card
+    for (var j = 0; j < records.length; j++) {
+      var record = records[j];
+      if (!record.meal) continue;
+      var statusClass = record.status || 'normal';
+      var valueContainer = document.getElementById(record.meal + 'PostValue');
+      if (valueContainer) {
+        valueContainer.innerHTML =
+          '<span class="glucose-value ' + statusClass + '" style="font-size:1.125rem;">' + record.value.toFixed(1) + '</span>';
       }
     }
   },
