@@ -81,6 +81,30 @@ const app = {
     this.displayPostMealGlucose(postRecords);
     var exerciseRecords = await Store.getExerciseByDate(today);
     this.displayExercise(exerciseRecords);
+    var weightRecord = await Store.getWeightByDate(today);
+    this.displayWeight(weightRecord.length > 0 ? weightRecord[weightRecord.length - 1] : null);
+  },
+
+  displayWeight(record) {
+    var display = document.getElementById('weightDisplay');
+    var timeEl = document.getElementById('weightTime');
+    if (!display) return;
+    if (record) {
+      display.classList.remove('placeholder');
+      display.innerHTML =
+        '<span class="weight-value">' + record.value.toFixed(1) + '</span>' +
+        '<span class="weight-unit">kg</span>';
+      if (timeEl && record.timestamp) {
+        var t = new Date(record.timestamp);
+        var hh = t.getHours() < 10 ? '0' + t.getHours() : '' + t.getHours();
+        var mm = t.getMinutes() < 10 ? '0' + t.getMinutes() : '' + t.getMinutes();
+        timeEl.textContent = hh + ':' + mm;
+      }
+    } else {
+      display.classList.add('placeholder');
+      display.innerHTML = '<span class="weight-value placeholder">--</span><span class="weight-unit">kg</span>';
+      if (timeEl) timeEl.textContent = '';
+    }
   },
 
   displayGlucose(type, record) {
@@ -317,6 +341,32 @@ const app = {
     }
   },
 
+  // ==================== Weight Input ====================
+  openWeightInput() {
+    document.getElementById('weightInput').value = '';
+    document.getElementById('weightNote').value = '';
+    document.getElementById('weightModal').classList.add('active');
+  },
+
+  async saveWeight() {
+    var input = document.getElementById('weightInput');
+    var note = document.getElementById('weightNote').value;
+    var value = parseFloat(input.value);
+    if (isNaN(value) || value < 20 || value > 300) {
+      this.showToast('请输入有效体重 (20-300 kg)', 'error');
+      return;
+    }
+    try {
+      await Store.addWeight({ value: value, note: note });
+      this.showToast('体重记录已保存', 'success');
+      this.closeModal('weightModal');
+      await this.loadHomeData();
+    } catch (err) {
+      console.error('Save weight error:', err);
+      this.showToast('保存失败，请重试', 'error');
+    }
+  },
+
   // ==================== Camera/OCR ====================
   async openCamera(glucoseType, mealType) {
     this.currentGlucoseType = glucoseType;
@@ -413,6 +463,14 @@ const app = {
         records.push(m);
       }
     }
+    if (filter === 'all' || filter === 'weight') {
+      var weightRecords = await Store.getAll('weight_records');
+      for (var w = 0; w < weightRecords.length; w++) {
+        var wt = Object.assign({}, weightRecords[w]);
+        wt.recordType = 'weight';
+        records.push(wt);
+      }
+    }
 
     records.sort(function(a, b) {
       var timeA = a.timestamp || a.date || '';
@@ -474,6 +532,17 @@ const app = {
           '<span class="record-time">' + this.formatTime(record.timestamp) + '</span>' +
         '</div>' +
         '<div class="record-value" style="font-size:0.875rem;">' + (record.duration || 0) + 'min</div>' +
+      '</div>';
+    }
+    if (record.recordType === 'weight') {
+      var wTimeStr = this.formatTime(record.timestamp);
+      return '<div class="record-item">' +
+        '<div class="record-icon">⚖️</div>' +
+        '<div class="record-info">' +
+          '<span class="record-type">体重</span>' +
+          '<span class="record-time">' + wTimeStr + '</span>' +
+        '</div>' +
+        '<div class="record-value">' + record.value.toFixed(1) + ' kg</div>' +
       '</div>';
     }
     return '';

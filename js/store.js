@@ -1,7 +1,7 @@
 // Data Storage Module
 const Store = {
   dbName: 'bg_tracking_db',
-  dbVersion: 1,
+  dbVersion: 2,
   db: null,
 
   // Initialize IndexedDB
@@ -31,6 +31,12 @@ const Store = {
           const exerciseStore = db.createObjectStore('exercise_records', { keyPath: 'id' });
           exerciseStore.createIndex('date', 'date', { unique: false });
           exerciseStore.createIndex('type', 'type', { unique: false });
+        }
+        
+        // Weight records store
+        if (!db.objectStoreNames.contains('weight_records')) {
+          const weightStore = db.createObjectStore('weight_records', { keyPath: 'id' });
+          weightStore.createIndex('date', 'date', { unique: false });
         }
       };
       
@@ -190,6 +196,29 @@ const Store = {
 
   async getExerciseByDate(date) {
     return await this.getByDate('exercise_records', date);
+  },
+
+  // ==================== Weight Records ====================
+
+  async addWeight(data) {
+    const record = {
+      id: this.generateId(),
+      date: data.date || new Date().toISOString().split('T')[0],
+      value: parseFloat(data.value),
+      unit: data.unit || 'kg',
+      timestamp: data.timestamp || new Date().toISOString(),
+      note: data.note || ''
+    };
+
+    return await this.add('weight_records', record);
+  },
+
+  async getWeightByDate(date) {
+    return await this.getByDate('weight_records', date);
+  },
+
+  async getWeightByRange(startDate, endDate) {
+    return await this.getByDateRange('weight_records', startDate, endDate);
   },
 
   // ==================== Settings (LocalStorage) ====================
