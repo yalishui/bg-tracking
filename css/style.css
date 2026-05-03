@@ -1187,6 +1187,24 @@ body {
   background: var(--warning);
 }
 
+ version-footer {
+  display: block;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  padding: var(--space-lg) var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.version-footer a {
+  color: var(--primary-light);
+  text-decoration: none;
+}
+
+.version-footer a:hover {
+  text-decoration: underline;
+}
+
 /* ==================== Utilities ==================== */
 .no-data {
   color: var(--text-light);
