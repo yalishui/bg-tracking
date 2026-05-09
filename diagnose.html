@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BG Tracking - 数据诊断</title>
+<style>
+body { font-family: monospace; padding: 20px; background: #0F2744; color: #EEF4FA; }
+pre { background: #1A3A5F; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+h2 { color: #4A90A4; }
+button { padding: 10px 20px; margin: 5px; background: #2D5A87; color: white; border: none; border-radius: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>🔍 BG Tracking 数据诊断</h1>
+<button onclick="diag()">检查 IndexedDB 数据</button>
+<button onclick="diagDate()">检查日期格式</button>
+<div id="output"></div>
+<script>
+async function diag() {
+  const out = document.getElementById('output');
+  out.innerHTML = '<p>正在读取 IndexedDB...</p>';
+  try {
+    const dbName = 'bg_tracking_db';
+    const request = indexedDB.open(dbName);
+    request.onsuccess = function(e) {
+      const db = e.target.result;
+      const stores = Array.from(db.objectStoreNames);
+      let html = '<h2>数据库: ' + dbName + ' (版本 ' + db.version + ')</h2>';
+      html += '<p>Object Stores: ' + stores.join(', ') + '</p>';
+      out.innerHTML = html;
+      
+      let pending = stores.length;
+      stores.forEach(storeName => {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const getAll = store.getAll();
+        getAll.onsuccess = function(ev) {
+          const records = ev.target.result;
+          let h = '<h2>' + storeName + ' (' + records.length + ' 条)</h2>';
+          h += '<pre>' + JSON.stringify(records.slice(0, 5), null, 2) + '</pre>';
+          if (records.length > 5) h += '<p>... 仅显示前5条</p>';
+          out.innerHTML += h;
+          pending--;
+        };
+        getAll.onerror = function() {
+          out.innerHTML += '<p>' + storeName + ': 读取失败</p>';
+          pending--;
+        };
+      });
+    };
+    request.onerror = function() {
+      out.innerHTML = '<p style="color:#CD5C5C;">无法打开数据库，可能已被清空或浏览器不支持</p>';
+    };
+  } catch(err) {
+    out.innerHTML = '<p style="color:#CD5C5C;">错误: ' + err.message + '</p>';
+  }
+}
+
+function diagDate() {
+  const now = new Date();
+  const utcDate = now.toISOString().split('T')[0];
+  const localDate = now.getFullYear() + '-' + 
+    String(now.getMonth()+1).padStart(2,'0') + '-' + 
+    String(now.getDate()).padStart(2,'0');
+  const html = '<h2>日期格式对比</h2>' +
+    '<p>UTC 日期 (toISOString): ' + utcDate + '</p>' +
+    '<p>本地日期 (getFullYear): ' + localDate + '</p>' +
+    '<p>本地时区: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '</p>' +
+    '<p>UTC 偏移: ' + (-now.getTimezoneOffset()/60) + ' 小时</p>';
+  document.getElementById('output').innerHTML = html;
+}
+</script>
+</body>
+</html>
