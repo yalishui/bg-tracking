@@ -8,49 +8,36 @@ const app = {
   currentIntensity: 'medium',
   currentRecordFilter: 'all',
 
-  // ==================== Date Helpers (6am cutoff, all in LOCAL time) ====================
-  // "Today" = before 6am shows yesterday's data (last completed day)
+  // ==================== Date Helpers (all in LOCAL time) ====================
+  // "Today" = current local date (YYYY-MM-DD)
   getEffectiveDate() {
     var now = new Date();
-    if (now.getHours() < 6) {
-      now.setDate(now.getDate() - 1);
-    }
-    // Return LOCAL date string (YYYY-MM-DD), consistent with store.js
     var y = now.getFullYear();
     var m = String(now.getMonth() + 1).padStart(2, '0');
     var d = String(now.getDate()).padStart(2, '0');
     return y + '-' + m + '-' + d;
   },
 
-  // "Yesterday" = the day before the effective date (for trends)
+  // "Yesterday" = previous local date
   getEffectiveYesterday() {
     var d = new Date();
-    if (d.getHours() < 6) {
-      d.setDate(d.getDate() - 2);
-    } else {
-      d.setDate(d.getDate() - 1);
-    }
+    d.setDate(d.getDate() - 1);
     var y = d.getFullYear();
     var m = String(d.getMonth() + 1).padStart(2, '0');
     var d2 = String(d.getDate()).padStart(2, '0');
     return y + '-' + m + '-' + d2;
   },
 
-  // Format date for display (shows which "day window" user is viewing)
+  // Format date for display
   getEffectiveDateDisplay() {
     var now = new Date();
-    var isPrevDay = now.getHours() < 6;
-    var displayDate = new Date(now);
-    if (isPrevDay) {
-      displayDate.setDate(displayDate.getDate() - 1);
-    }
-    var year = displayDate.getFullYear();
-    var month = displayDate.getMonth() + 1;
-    var day = displayDate.getDate();
+    var year = now.getFullYear();
+    var month = now.getMonth() + 1;
+    var day = now.getDate();
     var weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    var weekday = weekdayNames[displayDate.getDay()];
+    var weekday = weekdayNames[now.getDay()];
     var dateStr = year + '年' + month + '月' + day + '日';
-    return { dateStr: dateStr, weekday: weekday, isPrevDay: isPrevDay };
+    return { dateStr: dateStr, weekday: weekday, isPrevDay: false };
   },
 
   // ==================== Initialization ====================
