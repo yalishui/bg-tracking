@@ -4,6 +4,19 @@ const Store = {
   dbVersion: 2,
   db: null,
 
+  // Get local date string (YYYY-MM-DD in local time zone)
+  getLocalDateString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  },
+
+  // Get UTC date string (YYYY-MM-DD in UTC)
+  getUTCDateString(date) {
+    return date.toISOString().split('T')[0];
+  },
+
   // Initialize IndexedDB
   init() {
     return new Promise((resolve, reject) => {
@@ -85,15 +98,17 @@ const Store = {
     });
   },
 
-  // Get by date
+  // Generic get by date (reads all, filters in JS — works for both UTC and local date formats)
   getByDate(storeName, date) {
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction(storeName, 'readonly');
       const store = tx.objectStore(storeName);
-      const index = store.index('date');
-      const request = index.getAll(date);
-      
-      request.onsuccess = () => resolve(request.result);
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const all = request.result || [];
+        const results = all.filter(r => r.date === date);
+        resolve(results);
+      };
       request.onerror = (e) => reject(e.target.error);
     });
   },
@@ -134,7 +149,7 @@ const Store = {
       unit: 'mmol/L',
       status: this.getGlucoseStatus(data.value),
       timestamp: data.timestamp || new Date().toISOString(),
-      date: data.date || new Date().toISOString().split('T')[0],
+      date: data.date || this.getLocalDateString(new Date()),
       meal: data.meal || null,
       photo: data.photo || null,
       note: data.note || ''
@@ -163,7 +178,7 @@ const Store = {
   async addMeal(data) {
     const record = {
       id: this.generateId(),
-      date: data.date || new Date().toISOString().split('T')[0],
+      date: data.date || this.getLocalDateString(new Date()),
       meal: data.meal, // 'breakfast', 'lunch', 'dinner'
       foods: data.foods || [],
       glucoseId: data.glucoseId || null,
@@ -182,7 +197,7 @@ const Store = {
   async addExercise(data) {
     const record = {
       id: this.generateId(),
-      date: data.date || new Date().toISOString().split('T')[0],
+      date: data.date || this.getLocalDateString(new Date()),
       type: data.type || 'walking',
       customName: data.customName || '',
       duration: parseInt(data.duration) || 0,
@@ -203,7 +218,7 @@ const Store = {
   async addWeight(data) {
     const record = {
       id: this.generateId(),
-      date: data.date || new Date().toISOString().split('T')[0],
+      date: data.date || this.getLocalDateString(new Date()),
       value: parseFloat(data.value),
       unit: data.unit || 'kg',
       timestamp: data.timestamp || new Date().toISOString(),
