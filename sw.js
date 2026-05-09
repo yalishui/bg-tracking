@@ -1,5 +1,5 @@
 // Service Worker for BG Tracking App
-const CACHE_NAME = 'bg-tracking-cache-v3';
+const CACHE_NAME = 'bg-tracking-cache-v4';
 const urlsToCache = [
   './',
   './index.html',

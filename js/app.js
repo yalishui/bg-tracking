@@ -104,7 +104,7 @@ const app = {
     var postRecords = glucoseRecords.filter(function(r) {
       return r.type === 'post_1h' || r.type === 'post_2h';
     });
-    this.displayPostMealGlucose(postRecords);
+    this.displayPostMealGlucose(postRecords, mealRecords);
     var exerciseRecords = await Store.getExerciseByDate(today);
     this.displayExercise(exerciseRecords);
     var weightRecord = await Store.getWeightByDate(today);
@@ -169,16 +169,26 @@ const app = {
       }
       if (mealRecord && mealRecord.foods && mealRecord.foods.length > 0) {
         var tags = mealRecord.foods.map(function(food) {
-          return '<span class="food-tag">' + food + '</span>';
+          var name = typeof food === 'string' ? food : (food.name || '');
+          var carbs = (typeof food === 'object' && food.carbs > 0) ? ' <em>(' + food.carbs + 'g)</em>' : '';
+          return '<span class="food-tag">' + name + carbs + '</span>';
         }).join('');
-        container.innerHTML = tags;
+        // Add carbs summary
+        var carbsLine = '';
+        if (mealRecord.totalCarbs > 0) {
+          carbsLine = '<span class="meal-carbs">🍞 ' + mealRecord.totalCarbs + 'g碳水</span>';
+          if (mealRecord.avgGI) {
+            carbsLine += ' <span class="meal-gi">GI ' + mealRecord.avgGI + '</span>';
+          }
+        }
+        container.innerHTML = tags + carbsLine;
       } else {
         container.innerHTML = '<span class="no-data">未记录</span>';
       }
     }
   },
 
-  displayPostMealGlucose(records) {
+  displayPostMealGlucose(glucoseRecords, mealRecords) {
     // Reset all meal post values first
     var types = ['breakfast', 'lunch', 'dinner'];
     for (var i = 0; i < types.length; i++) {
@@ -187,15 +197,18 @@ const app = {
         valueContainer.innerHTML = '<span class="placeholder">--</span>';
       }
     }
-    // Display each record in its corresponding meal card
-    for (var j = 0; j < records.length; j++) {
-      var record = records[j];
-      if (!record.meal) continue;
-      var statusClass = record.status || 'normal';
-      var valueContainer = document.getElementById(record.meal + 'PostValue');
+    // Use postGlucoseId on meal records to find the linked glucose
+    if (!mealRecords) return;
+    for (var m = 0; m < mealRecords.length; m++) {
+      var meal = mealRecords[m];
+      if (!meal.postGlucoseId) continue;
+      var glucose = glucoseRecords.find(function(g) { return g.id === meal.postGlucoseId; });
+      if (!glucose) continue;
+      var statusClass = glucose.status || 'normal';
+      var valueContainer = document.getElementById(meal.meal + 'PostValue');
       if (valueContainer) {
         valueContainer.innerHTML =
-          '<span class="glucose-value ' + statusClass + '" style="font-size:1.125rem;">' + record.value.toFixed(1) + '</span>';
+          '<span class="glucose-value ' + statusClass + '" style="font-size:1.125rem;">' + glucose.value.toFixed(1) + '</span>';
       }
     }
   },
@@ -274,8 +287,32 @@ const app = {
       return;
     }
     var type = this.currentGlucoseType === 'post' ? 'post_2h' : 'fasting';
+
+    // Find mealId to link post-meal glucose to the correct meal record
+    var mealId = null;
+    if (this.currentGlucoseType === 'post' && this.currentMealType) {
+      var today = this.getEffectiveDate();
+      var meals = await Store.getMealByDate(today);
+      var linkedMeal = meals.find(function(m) { return m.meal === this.currentMealType; }.bind(this));
+      if (linkedMeal) mealId = linkedMeal.id;
+    }
+
     try {
-      await Store.addGlucose({ type: type, value: value, meal: this.currentMealType || null, note: note });
+      await Store.addGlucose({
+        type: type,
+        value: value,
+        mealId: mealId,
+        note: note,
+        source: 'manual'
+      });
+      // Link glucose back to meal
+      if (mealId) {
+        var glucoseRecords = await Store.getGlucoseByDate(this.getEffectiveDate());
+        var justSaved = glucoseRecords.find(function(r) { return r.value === value && r.type === type; });
+        if (justSaved) {
+          await Store.linkMealPostGlucose(mealId, justSaved.id);
+        }
+      }
       this.showToast('血糖记录已保存', 'success');
       this.closeModal('glucoseModal');
       await this.loadHomeData();
@@ -295,18 +332,30 @@ const app = {
     var title = document.getElementById('mealModalTitle');
     title.textContent = '记录' + this.getMealName(mealType);
     document.getElementById('mealFoodsInput').value = '';
+    document.getElementById('mealCarbsInput').value = '';
     document.getElementById('mealNote').value = '';
     modal.classList.add('active');
   },
 
   async saveMeal() {
     var foodsInput = document.getElementById('mealFoodsInput').value;
+    var carbsInput = document.getElementById('mealCarbsInput').value;
     var note = document.getElementById('mealNote').value;
     if (!foodsInput.trim()) {
       this.showToast('请输入食物内容', 'error');
       return;
     }
-    var foods = foodsInput.split(/[,，]/).map(function(f) { return f.trim(); }).filter(function(f) { return f.length > 0; });
+    var foodNames = foodsInput.split(/[,，]/).map(function(f) { return f.trim(); }).filter(function(f) { return f.length > 0; });
+    // Build food objects with name and proportional carbs
+    var totalCarbs = parseFloat(carbsInput) || 0;
+    var foods = foodNames.map(function(name) {
+      return { name: name, carbs: 0, gi: null };
+    });
+    // If totalCarbs entered, distribute evenly per food (can be refined later)
+    if (totalCarbs > 0 && foods.length > 0) {
+      var perFood = Math.round(totalCarbs / foods.length * 10) / 10;
+      foods.forEach(function(f) { f.carbs = perFood; });
+    }
     try {
       await Store.addMeal({ meal: this.currentMealType, foods: foods, note: note });
       this.showToast('饮食记录已保存', 'success');
@@ -440,28 +489,48 @@ const app = {
     this.openCamera(this.currentGlucoseType, this.currentMealType);
   },
 
-  saveOCRGlucose() {
+  async saveOCRGlucose() {
     var value = parseFloat(document.getElementById('ocrValue').textContent);
     if (!value || isNaN(value)) {
       this.showToast('无效血糖值', 'error');
       return;
     }
     var type = this.currentGlucoseType === 'post' ? 'post_2h' : 'fasting';
-    var meal = this.currentMealType || null;
-    var self = this;
-    Store.addGlucose({ type: type, value: value, meal: meal, note: 'OCR识别' })
-      .then(function() {
-        self.showToast('血糖记录已保存（OCR）', 'success');
-        self.closeModal('cameraModal');
-        self.loadHomeData();
-        if (self.currentTab === 'trends') {
-          Charts.update(self.currentPeriod);
-        }
-      })
-      .catch(function(err) {
-        console.error('OCR save error:', err);
-        self.showToast('保存失败', 'error');
+
+    // Find mealId to link post-meal glucose
+    var mealId = null;
+    if (this.currentGlucoseType === 'post' && this.currentMealType) {
+      var today = this.getEffectiveDate();
+      var meals = await Store.getMealByDate(today);
+      var linkedMeal = meals.find(function(m) { return m.meal === this.currentMealType; }.bind(this));
+      if (linkedMeal) mealId = linkedMeal.id;
+    }
+
+    try {
+      await Store.addGlucose({
+        type: type,
+        value: value,
+        mealId: mealId,
+        note: 'OCR识别',
+        source: 'ocr'
       });
+      if (mealId) {
+        var glucoseRecords = await Store.getGlucoseByDate(this.getEffectiveDate());
+        var justSaved = glucoseRecords.find(function(r) { return r.value === value && r.type === type; });
+        if (justSaved) {
+          await Store.linkMealPostGlucose(mealId, justSaved.id);
+        }
+      }
+      this.showToast('血糖记录已保存（OCR）', 'success');
+      this.closeModal('cameraModal');
+      await this.loadHomeData();
+      if (this.currentTab === 'trends') {
+        Charts.update(this.currentPeriod);
+      }
+    } catch (err) {
+      console.error('OCR save error:', err);
+      this.showToast('保存失败', 'error');
+    }
   },
 
   // ==================== Trends ====================
@@ -550,27 +619,31 @@ const app = {
     if (record.recordType === 'meal') {
       var foodsPreview = '';
       if (record.foods && record.foods.length > 0) {
-        var previewFoods = record.foods.slice(0, 2);
+        var previewFoods = record.foods.slice(0, 2).map(function(f) {
+          return typeof f === 'string' ? f : f.name;
+        });
         foodsPreview = previewFoods.join(', ');
         if (record.foods.length > 2) foodsPreview += '...';
       }
+      var carbsLine = record.totalCarbs > 0 ? ' 🍞' + record.totalCarbs + 'g' : '';
       return '<div class="record-item">' +
         '<div class="record-icon">🍽️</div>' +
         '<div class="record-info">' +
-          '<span class="record-type">' + this.getMealName(record.meal) + '</span>' +
+          '<span class="record-type">' + this.getMealName(record.meal) + carbsLine + '</span>' +
           '<span class="record-time">' + (record.date || '') + '</span>' +
         '</div>' +
         '<div class="record-value" style="font-size:0.875rem;">' + foodsPreview + '</div>' +
       '</div>';
     }
     if (record.recordType === 'exercise') {
+      var calStr = record.caloriesBurned ? ' ' + record.caloriesBurned + 'kcal' : '';
       return '<div class="record-item">' +
         '<div class="record-icon">' + this.getExerciseEmoji(record.type) + '</div>' +
         '<div class="record-info">' +
           '<span class="record-type">' + this.getExerciseName(record.type) + '</span>' +
           '<span class="record-time">' + this.formatTime(record.timestamp) + '</span>' +
         '</div>' +
-        '<div class="record-value" style="font-size:0.875rem;">' + (record.duration || 0) + 'min</div>' +
+        '<div class="record-value" style="font-size:0.875rem;">' + (record.duration || 0) + 'min' + calStr + '</div>' +
       '</div>';
     }
     if (record.recordType === 'weight') {

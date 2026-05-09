@@ -312,6 +312,30 @@ body {
   font-size: 0.75rem;
 }
 
+.meal-foods .food-tag em {
+  font-style: normal;
+  color: var(--text-light);
+}
+
+.meal-carbs, .meal-gi {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin: 2px;
+  font-weight: 500;
+}
+
+.meal-carbs {
+  background: rgba(234, 179, 8, 0.15);
+  color: #B8860B;
+}
+
+.meal-gi {
+  background: rgba(74, 144, 164, 0.15);
+  color: var(--secondary);
+}
+
 .post-meal-section {
   display: flex;
   justify-content: space-between;
