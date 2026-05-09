@@ -8,6 +8,42 @@ const app = {
   currentIntensity: 'medium',
   currentRecordFilter: 'all',
 
+  // ==================== Date Helpers (6am cutoff) ====================
+  // "Today" = before 6am shows yesterday's data (last completed day)
+  getEffectiveDate() {
+    var now = new Date();
+    if (now.getHours() < 6) {
+      now.setDate(now.getDate() - 1);
+    }
+    return now.toISOString().split('T')[0];
+  },
+
+  // "Yesterday" = the day before the effective date (for trends)
+  getEffectiveYesterday() {
+    var d = new Date();
+    if (d.getHours() < 6) {
+      d.setDate(d.getDate() - 2);
+    } else {
+      d.setDate(d.getDate() - 1);
+    }
+    return d.toISOString().split('T')[0];
+  },
+
+  // Format date for display (shows which "day window" user is viewing)
+  getEffectiveDateDisplay() {
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = now.getMonth() + 1;
+    var day = now.getDate();
+    var weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    if (now.getHours() < 6) {
+      now.setDate(now.getDate() - 1);
+    }
+    var weekday = weekdayNames[now.getDay()];
+    var dateStr = year + '年' + month + '月' + day + '日';
+    return { dateStr: dateStr, weekday: weekday, isPrevDay: now.getHours() < 6 };
+  },
+
   // ==================== Initialization ====================
   async init() {
     console.log('BG Tracking App Initializing...');
@@ -46,22 +82,16 @@ const app = {
 
   // ==================== Date Display ====================
   updateDateDisplay() {
-    var now = new Date();
-    var year = now.getFullYear();
-    var month = now.getMonth() + 1;
-    var day = now.getDate();
-    var weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    var weekday = weekdayNames[now.getDay()];
-    var dateStr = year + '年' + month + '月' + day + '日';
+    var info = this.getEffectiveDateDisplay();
     var dateEl = document.querySelector('.date-text');
     var weekEl = document.querySelector('.weekday-text');
-    if (dateEl) dateEl.textContent = dateStr;
-    if (weekEl) weekEl.textContent = weekday;
+    if (dateEl) dateEl.textContent = info.dateStr;
+    if (weekEl) weekEl.textContent = info.weekday;
   },
 
   // ==================== Home Page ====================
   async loadHomeData() {
-    var today = new Date().toISOString().split('T')[0];
+    var today = this.getEffectiveDate();
     var glucoseRecords = await Store.getGlucoseByDate(today);
     var fastingRecord = null;
     for (var i = 0; i < glucoseRecords.length; i++) {
@@ -373,10 +403,23 @@ const app = {
     this.currentMealType = mealType || null;
     var modal = document.getElementById('cameraModal');
     modal.classList.add('active');
-    var success = await OCR.initCamera();
-    if (!success) {
-      this.showToast('无法访问摄像头，请手动输入', 'error');
+
+    // Reset OCR state
+    var ocrResult = document.getElementById('ocrResult');
+    if (ocrResult) ocrResult.style.display = 'none';
+    var captureBtn = document.getElementById('captureBtn');
+    if (captureBtn) captureBtn.style.display = 'inline-flex';
+    var confirmBtn = document.getElementById('confirmOCRBtn');
+    if (confirmBtn) confirmBtn.style.display = 'none';
+    var retakeBtn = document.getElementById('retakeBtn');
+    if (retakeBtn) retakeBtn.style.display = 'none';
+
+    var result = await OCR.initCamera();
+    if (!result || result.error) {
+      var errMsg = (result && result.message) || '无法访问摄像头，请手动输入';
+      this.showToast(errMsg, 'error');
       this.closeModal('cameraModal');
+      return;
     }
   },
 

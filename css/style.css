@@ -1144,9 +1144,23 @@ body {
 .ocr-result {
   text-align: center;
   padding: var(--space-md);
-  background: rgba(124, 179, 66, 0.1);
+  background: rgba(74, 144, 164, 0.1);
   border-radius: var(--radius-md);
   font-size: 0.875rem;
+  color: var(--text-primary);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ocr-result.error {
+  background: rgba(205, 92, 92, 0.1);
+  color: var(--status-low);
+}
+
+.ocr-loading {
+  color: var(--text-secondary);
 }
 
 #ocrValue {
