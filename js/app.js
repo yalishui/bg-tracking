@@ -447,6 +447,8 @@ const app = {
     this.currentGlucoseType = glucoseType;
     this.currentMealType = mealType || null;
     var modal = document.getElementById('cameraModal');
+
+    // Show modal FIRST so camera/video elements are in DOM
     modal.classList.add('active');
 
     // Reset OCR state
@@ -458,6 +460,9 @@ const app = {
     if (confirmBtn) confirmBtn.style.display = 'none';
     var retakeBtn = document.getElementById('retakeBtn');
     if (retakeBtn) retakeBtn.style.display = 'none';
+
+    // Small delay to let modal render before accessing camera
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     var result = await OCR.initCamera();
     if (!result || result.error) {

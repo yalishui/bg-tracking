@@ -184,20 +184,126 @@ const Charts = {
       document.getElementById('minValue').textContent = '--';
       return;
     }
-    
+
     const values = records.map(r => r.value);
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
     const max = Math.max(...values);
     const min = Math.min(...values);
-    
+
     // Calculate target rate (within 4.0-7.8 mmol/L)
     const inTarget = records.filter(r => r.value >= 4.0 && r.value <= 7.8).length;
     const targetRate = ((inTarget / records.length) * 100).toFixed(1);
-    
+
     document.getElementById('avgValue').textContent = avg.toFixed(1);
     document.getElementById('targetRate').textContent = targetRate;
     document.getElementById('maxValue').textContent = max.toFixed(1);
     document.getElementById('minValue').textContent = min.toFixed(1);
+
+    // Update meal gap and daily range stats
+    this.updateMealStats(records);
+  },
+
+  async updateMealStats(glucoseRecords) {
+    // Fetch meal records for postGlucoseId linking
+    const startDate = glucoseRecords.length > 0 ? glucoseRecords[glucoseRecords.length - 1].date : null;
+    const endDate = glucoseRecords.length > 0 ? glucoseRecords[0].date : null;
+    if (!startDate || !endDate) {
+      document.getElementById('mealGapValue').textContent = '--';
+      document.getElementById('mealGapWeekly').textContent = '周均: --';
+      document.getElementById('rangeValue').textContent = '--';
+      document.getElementById('rangeWeekly').textContent = '周均: --';
+      return;
+    }
+
+    const mealRecords = await Store.getByDateRange('meal_records', startDate, endDate);
+
+    // Build map: glucoseId -> meal
+    const glucoseToMeal = {};
+    mealRecords.forEach(m => {
+      if (m.postGlucoseId) glucoseToMeal[m.postGlucoseId] = m;
+    });
+
+    // Group glucose records by date
+    const byDate = {};
+    glucoseRecords.forEach(r => {
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push(r);
+    });
+    // Sort each day's records by timestamp
+    Object.keys(byDate).forEach(d => {
+      byDate[d].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    });
+
+    const dates = Object.keys(byDate).sort();
+
+    // ---- Metric A: Meal Gap (post - baseline) ----
+    // breakfast: baseline = fasting; lunch/dinner: baseline = previous post-meal
+    const dailyGaps = [];
+    let prevPostValue = null;
+
+    dates.forEach(date => {
+      const dayRecords = byDate[date];
+      let dayGapSum = 0;
+      let gapCount = 0;
+      let fastingVal = null;
+
+      dayRecords.forEach(r => {
+        if (r.type === 'fasting') fastingVal = r.value;
+      });
+
+      dayRecords.forEach(r => {
+        if (r.type === 'post_1h' || r.type === 'post_2h') {
+          const linkedMeal = glucoseToMeal[r.id];
+          let baseline = prevPostValue; // default baseline: previous post-meal
+
+          if (linkedMeal && linkedMeal.meal === 'breakfast' && fastingVal !== null) {
+            baseline = fastingVal; // breakfast: use fasting as baseline
+          }
+
+          if (baseline !== null) {
+            const gap = r.value - baseline;
+            dayGapSum += gap;
+            gapCount++;
+          }
+          prevPostValue = r.value; // update for next meal
+        }
+      });
+
+      if (gapCount > 0) {
+        dailyGaps.push(dayGapSum / gapCount);
+      }
+    });
+
+    const dailyMealGap = dailyGaps.length > 0
+      ? (dailyGaps.reduce((a, b) => a + b, 0) / dailyGaps.length).toFixed(1)
+      : '--';
+    const weeklyMealGap = dailyGaps.length > 0 ? dailyGaps.reduce((a, b) => a + b, 0) / dailyGaps.length : null;
+    const weeklyMealGapStr = weeklyMealGap !== null ? '周均: ' + weeklyMealGap.toFixed(1) : '周均: --';
+
+    document.getElementById('mealGapValue').textContent = dailyMealGap;
+    document.getElementById('mealGapWeekly').textContent = weeklyMealGapStr;
+
+    // ---- Metric B: Daily Range (max - min), weekly avg ----
+    const dailyRanges = [];
+    dates.forEach(date => {
+      const dayRecords = byDate[date];
+      if (dayRecords.length < 2) return;
+      const vals = dayRecords.map(r => r.value);
+      const dayMax = Math.max(...vals);
+      const dayMin = Math.min(...vals);
+      dailyRanges.push(dayMax - dayMin);
+    });
+
+    const dailyRange = dailyRanges.length > 0
+      ? (dailyRanges.reduce((a, b) => a + b, 0) / dailyRanges.length).toFixed(1)
+      : '--';
+    const weeklyRange = dailyRanges.length > 0
+      ? dailyRanges.reduce((a, b) => a + b, 0) / dailyRanges.length
+      : null;
+    const weeklyRangeStr = weeklyRange !== null ? '周均: ' + weeklyRange.toFixed(1) : '周均: --';
+
+    document.getElementById('rangeValue').textContent = dailyRange;
+    document.getElementById('rangeWeekly').textContent = weeklyRangeStr;
   }
 };
 

@@ -819,6 +819,12 @@ body {
   color: var(--text-light);
 }
 
+.stat-card .stat-sublabel {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
 .chart-legend {
   display: flex;
   justify-content: center;
